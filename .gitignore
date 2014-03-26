@@ -1,0 +1,17 @@
+.settings
+.classpath
+.project
+target/
+profiles.xml
+*~
+.idea/
+*.iml
+doc
+.gradle/
+gradlew.bat
+*.ipr
+*.iws
+pom.xml
+settings.gradle
+build/
+classes/

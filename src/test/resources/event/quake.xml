@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<event publicID="2013p543824">
+    <locality>25 km east of Seddon</locality>
+    <creationInfo>
+        <agencyID>WEL(Avalon)</agencyID>
+        <updateTime>2013-07-21T05:09:30Z</updateTime>
+    </creationInfo>
+    <preferredOrigin>
+        <time>
+            <value>2013-07-21T05:09:30.000Z</value>
+        </time>
+        <latitude>
+            <value>-41.60</value>
+        </latitude>
+        <longitude>
+            <value>174.33</value>
+        </longitude>
+        <depth>
+            <value>13.0</value>
+        </depth>
+        <preferredMagnitude>
+            <magnitude>
+                <value>2.5</value>
+            </magnitude>
+            <type>M</type>
+        </preferredMagnitude>
+    </preferredOrigin>
+    <status>automatic</status>
+</event>

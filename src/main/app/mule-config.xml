@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  ~ Copyright 2012, Institute of Geological & Nuclear Sciences Ltd or
+  ~ third-party contributors as indicated by the @author tags.
+  ~
+  ~ This program is free software: you can redistribute it and/or modify
+  ~ it under the terms of the GNU General Public License as published by
+  ~ the Free Software Foundation, either version 3 of the License, or
+  ~ (at your option) any later version.
+  ~
+  ~ This program is distributed in the hope that it will be useful,
+  ~ but WITHOUT ANY WARRANTY; without even the implied warranty of
+  ~ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+  ~ GNU General Public License for more details.
+  ~
+  ~ You should have received a copy of the GNU General Public License
+  ~ along with this program.  If not, see <http://www.gnu.org/licenses/>.
+  ~
+  ~ @author Baishan
+  -->
+
+<mule xmlns="http://www.mulesoft.org/schema/mule/core"
+      xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+      xmlns:spring="http://www.springframework.org/schema/beans"
+      xmlns:sqs="http://www.mulesoft.org/schema/mule/sqs"
+      xmlns:ua="http://www.mulesoft.org/schema/mule/ua"
+      xmlns:mule-xml="http://www.mulesoft.org/schema/mule/xml"
+      xmlns:client="http://www.mulesoft.org/schema/mule/client"
+      xmlns:context="http://www.springframework.org/schema/context"
+      xsi:schemaLocation="
+        http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd       
+        http://www.mulesoft.org/schema/mule/xml http://www.mulesoft.org/schema/mule/xml/current/mule-xml.xsd
+        http://www.mulesoft.org/schema/mule/sqs http://www.mulesoft.org/schema/mule/sqs/2.0.2/mule-sqs.xsd
+        http://www.mulesoft.org/schema/mule/ua http://www.mulesoft.org/schema/mule/ua/1.0-SNAPSHOT/mule-ua.xsd
+        http://www.mulesoft.org/schema/mule/client http://www.mulesoft.org/schema/mule/client/current/mule-client.xsd
+        http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd
+        http://www.springframework.org/schema/context http://www.springframework.org/schema/context/spring-context-3.1.xsd">
+
+    <description>Listens for seiscomp messages from the SQS and send push notifications to Urban Airship.</description>
+
+    <spring:beans>
+        <context:property-placeholder location="mule-quake-push.properties"/>
+    </spring:beans>
+
+    <sqs:config endPoint="${quake.sqs.endpoint}"
+                accessKeyId="${quake.sqs.id}" secretAccessKey="${quake.sqs.secret}"
+                queueName="${quake.sqs.queue.name}"/>
+
+    <ua:config appKey="${UA_APP_KEY}"
+               masterSecret="${UA_MASTER_SECRET}"/>
+
+    <flow name="main">
+        <sqs:receive-messages numberOfMessages="1" viaSns="true"/>
+
+        <logger level="INFO" message="received message for  #[xpath:/event/@publicID]"/>
+
+        <ua:send-message/>
+
+        <logger level="INFO" message="push response  #[payload]"/>
+        <!-- TODO this will send all exceptions to a dir.  They may need some filtering
+        e.g., exceptions for out of order messages are ok. -->
+        <default-exception-strategy>
+            <processor-chain>
+                <byte-array-to-string-transformer/>
+                <file:outbound-endpoint path="${quake.push.dir.err}"/>
+            </processor-chain>
+        </default-exception-strategy>
+    </flow>
+</mule>

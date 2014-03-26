@@ -1,0 +1,140 @@
+apply plugin: 'java'
+apply plugin: 'maven-publish'
+apply plugin: 'idea'
+
+group = 'nz.org.geonet'
+version = '1.0.0-SNAPSHOT'
+
+sourceCompatibility = 1.7
+targetCompatibility = 1.7
+
+task wrapper(type: Wrapper) {
+    gradleVersion = '1.9'
+}
+
+repositories {
+    maven {
+        credentials {
+            username geonetUser
+            password geonetPassword
+        }
+        url 'https://geonet.artifactoryonline.com/geonet/all'
+    }
+    mavenLocal()
+}
+
+buildscript {
+    repositories {
+        maven {
+            url 'https://geonet.artifactoryonline.com/geonet/public-releases'
+        }
+        mavenCentral()
+    }
+}
+
+configurations {
+    provided
+
+}
+
+sourceSets {
+    test.compileClasspath += configurations.provided
+    test.runtimeClasspath += configurations.provided
+}
+
+dependencies {
+    compile group: 'nz.org.geonet', name: 'sqs', version: '2.0.2'
+    compile group: 'nz.org.geonet', name: 'quake-mmi', version: '0.0.1-SNAPSHOT'
+    compile group: 'nz.org.geonet', name: 'mule-ua-connector', version: '1.0-SNAPSHOT'
+    compile group: 'xmlunit', name: 'xmlunit', version: '1.2'
+
+
+    provided('org.mule:mule-core:3.4.0',
+            'org.mule.transports:mule-transport-file:3.4.0',
+            'org.mule.transports:mule-transport-jdbc:3.4.0',
+            'org.mule.transports:mule-transport-quartz:3.4.0',
+            'org.mule.transports:mule-transport-vm:3.4.0',
+            'org.mule.modules:mule-module-client:3.4.0',
+            'org.mule.modules:mule-module-spring-config:3.4.0',
+            'org.mule.modules:mule-module-xml:3.4.0'
+    )
+
+    testCompile group: 'org.mule.tests', name: 'mule-tests-functional', version: '3.4.0'
+    testCompile group: 'mockobjects', name: 'mockobjects-core', version: '0.09'
+    testCompile group: 'junit', name: 'junit', version: '4.9'
+    testCompile group: 'org.dbunit', name: 'dbunit', version: '2.4.7'
+}
+
+publishing {
+    publications {
+        maven(MavenPublication) {
+            artifact assembleMule {
+                extension 'zip'
+            }
+        }
+    }
+    repositories {
+        maven {
+            url 'https://geonet.artifactoryonline.com/geonet/local-releases'
+            credentials {
+                username geonetUser
+                password geonetPassword
+            }
+        }
+    }
+}
+
+/** mule build tasks */
+/** copy jars files */
+/** note the removal of the configurations.provided scope this is particularly
+ for dependencies in the provided scope coming from the sqs library. */
+task copyLibs(type: Copy) {
+    into "$buildDir/temp/lib"
+    from configurations.runtime - configurations.provided
+}
+
+/** copy classes, resources files */
+task copyResources(type: Copy) {
+    into "$buildDir/temp/classes/"
+    from('src/main/resources/') {
+        include '*.*'
+    }
+    from("$buildDir/classes/main/") {
+        include '**'
+    }
+}
+
+/** assemble app for mule */
+task assembleMule(type: Zip) {
+    destinationDir file("$buildDir/libs/")
+    archiveName project.name + '-' + "$version" + '.zip'
+    from('src/main/app/') {
+        include '*.xml'
+    }
+    from("$buildDir/temp/") {
+        include 'classes/'
+        include 'lib/'
+    }
+
+    doLast {
+        delete "$buildDir/temp/"
+    }
+}
+
+/** install mule */
+task installMule(type: Copy) {
+    into "$System.env.MULE_HOME/apps/"
+    from("$buildDir/libs/") {
+        include '*.zip'
+    }
+}
+
+task initDB(type: Exec) {
+    commandLine 'scripts/initdb-93.sh'
+}
+
+/** task dependencies */
+copyResources.dependsOn(compileJava, copyLibs)
+assembleMule.dependsOn(copyResources)
+assemble.dependsOn(assembleMule)
+installMule.dependsOn(assembleMule)
