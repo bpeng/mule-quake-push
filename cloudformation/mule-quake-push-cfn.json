@@ -1,0 +1,193 @@
+{
+    "AWSTemplateFormatVersion": "2010-09-09",
+    "Description": "Create AWS resources for mule-quake-push.",
+    "Parameters": {
+        "SNSArn": {
+            "Type": "String",
+            "Description": "The ARN of the topic that will send to the SQS queue.  This is used for creating the topic policy.  The queue will still need to be manually subscribed to the topic."
+        },
+        "SNSCloudWatchAlarmArn": {
+            "Type": "String",
+            "Description": "The ARN of the topic to send CloudWatch alarm messages to."
+        }
+    },
+    "Resources": {
+        "deadLetterQueue": {
+            "Type": "AWS::SQS::Queue",
+            "Properties": {
+                "MessageRetentionPeriod": 1209600
+            }
+        },
+        "queue": {
+            "Type": "AWS::SQS::Queue",
+            "Properties": {
+                "MessageRetentionPeriod": 3600,
+                "VisibilityTimeout": 600,
+                "RedrivePolicy": {
+                    "deadLetterTargetArn": {
+                        "Fn::GetAtt": [ "deadLetterQueue", "Arn" ]
+                    },
+                    "maxReceiveCount": 3
+                }
+            }
+        },
+        "user": {
+            "Type": "AWS::IAM::User"
+        },
+        "accessKey": {
+            "Type": "AWS::IAM::AccessKey",
+            "Properties": {
+                "UserName": {
+                    "Ref": "user"
+                }
+            }
+        },
+        "queuePolicy": {
+            "Type": "AWS::SQS::QueuePolicy",
+            "Properties": {
+                "PolicyDocument": {
+                    "Id": "MyQueuePolicy",
+                    "Statement": [
+                        {
+                            "Sid": "Allow-read",
+                            "Effect": "Allow",
+                            "Principal": {
+                                "AWS": {
+                                    "Fn::GetAtt": [ "user", "Arn" ]
+                                }
+                            },
+                            "Action": [
+                                "sqs:SendMessage",
+                                "sqs:DeleteMessage",
+                                "sqs:ReceiveMessage",
+                                "sqs:GetQueueUrl"
+                            ],
+                            "Resource": "*"
+                        },
+                        {
+                            "Sid": "Allow-send",
+                            "Effect": "Allow",
+                            "Principal": {
+                                "AWS": "*"
+                            },
+                            "Action": ["sqs:SendMessage"],
+                            "Resource": {
+                                "Fn::GetAtt": [ "queue", "Arn" ]
+                            },
+                            "Condition": {
+                                "ArnEquals": {
+                                    "aws:SourceArn": {
+                                        "Ref": "SNSArn"
+                                    }
+                                }
+                            }
+                        }
+                    ]
+                },
+                "Queues": [
+                    {
+                        "Ref": "queue"
+                    },
+                    {
+                        "Ref": "deadLetterQueue"
+                    }
+
+                ]
+            }
+        },
+        "QueueDepthAlarm": {
+            "Type": "AWS::CloudWatch::Alarm",
+            "Properties": {
+                "AlarmDescription": "Monitors the SQS queue used for the mule-quake-push.  Alarms if messages are backing up.",
+                "Namespace": "AWS/SQS",
+                "MetricName": "ApproximateNumberOfMessagesVisible",
+                "Dimensions": [
+                    {
+                        "Name": "QueueName",
+                        "Value": {
+                            "Fn::GetAtt": [ "queue", "QueueName" ]
+                        }
+                    }
+                ],
+                "Statistic": "Sum",
+                "Period": "300",
+                "EvaluationPeriods": "3",
+                "Threshold": "1",
+                "ComparisonOperator": "GreaterThanOrEqualToThreshold",
+                "AlarmActions": [
+                    {
+                        "Ref": "SNSCloudWatchAlarmArn"
+                    }
+                ],
+                "InsufficientDataActions": [
+                    {
+                        "Ref": "SNSCloudWatchAlarmArn"
+                    }
+                ],
+                "OKActions": [
+                    {
+                        "Ref": "SNSCloudWatchAlarmArn"
+                    }
+                ]
+            }
+        },
+        "DeadLetterQueueDepthAlarm": {
+            "Type": "AWS::CloudWatch::Alarm",
+            "Properties": {
+                "AlarmDescription": "Monitors the dead letter SQS queue used for the mule-quake-push.  Alarms if messages are backing up.",
+                "Namespace": "AWS/SQS",
+                "MetricName": "ApproximateNumberOfMessagesVisible",
+                "Dimensions": [
+                    {
+                        "Name": "QueueName",
+                        "Value": {
+                            "Fn::GetAtt": [ "deadLetterQueue", "QueueName" ]
+                        }
+                    }
+                ],
+                "Statistic": "Sum",
+                "Period": "300",
+                "EvaluationPeriods": "3",
+                "Threshold": "1",
+                "ComparisonOperator": "GreaterThanOrEqualToThreshold",
+                "AlarmActions": [
+                    {
+                        "Ref": "SNSCloudWatchAlarmArn"
+                    }
+                ],
+                "InsufficientDataActions": [
+                    {
+                        "Ref": "SNSCloudWatchAlarmArn"
+                    }
+                ],
+                "OKActions": [
+                    {
+                        "Ref": "SNSCloudWatchAlarmArn"
+                    }
+                ]
+            }
+        }
+    },
+    "Outputs": {
+        "QueueName": {
+            "Value": {
+                "Fn::GetAtt": [ "queue", "QueueName" ]
+            }
+        },
+        "QueueArn": {
+            "Value": {
+                "Fn::GetAtt": [ "queue", "Arn" ]
+            }
+        },
+        "AccessKeyID": {
+            "Value": {
+                "Ref": "accessKey"
+            }
+        },
+        "SecretKey": {
+            "Value": {
+                "Fn::GetAtt": [ "accessKey", "SecretAccessKey" ]
+            }
+        }
+    }
+}
