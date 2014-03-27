@@ -44,17 +44,17 @@
 
     <sqs:config endPoint="${quake.sqs.endpoint}"
                 accessKeyId="${quake.sqs.id}" secretAccessKey="${quake.sqs.secret}"
-                queueName="${quake.sqs.queue.name}"/>
+                queueName="${quake.sqs.queue.name}" name="sqs-config"/>
 
     <ua:config appKey="${UA_APP_KEY}"
-               masterSecret="${UA_MASTER_SECRET}"/>
+               masterSecret="${UA_MASTER_SECRET}" name="ua-config"/>
 
     <flow name="main">
-        <sqs:receive-messages numberOfMessages="1" viaSns="true"/>
+        <sqs:receive-messages config-ref="sqs-config" numberOfMessages="1" viaSns="true"/>
 
         <logger level="INFO" message="received message for  #[xpath:/event/@publicID]"/>
 
-        <ua:send-message/>
+        <ua:send-message config-ref="ua-config"/>
 
         <logger level="INFO" message="push response  #[payload]"/>
     </flow>
