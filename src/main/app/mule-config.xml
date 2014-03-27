@@ -57,13 +57,5 @@
         <ua:send-message/>
 
         <logger level="INFO" message="push response  #[payload]"/>
-        <!-- TODO this will send all exceptions to a dir.  They may need some filtering
-        e.g., exceptions for out of order messages are ok. -->
-        <default-exception-strategy>
-            <processor-chain>
-                <byte-array-to-string-transformer/>
-                <file:outbound-endpoint path="${quake.push.dir.err}"/>
-            </processor-chain>
-        </default-exception-strategy>
     </flow>
 </mule>
