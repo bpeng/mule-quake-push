@@ -1,4 +1,4 @@
-package nz.org.geonet.wfs;
+package nz.org.geonet.push;
 
 
 import org.apache.log4j.Logger;
