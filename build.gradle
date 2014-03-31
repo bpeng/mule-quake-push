@@ -1,9 +1,10 @@
 apply plugin: 'java'
 apply plugin: 'maven-publish'
 apply plugin: 'idea'
+apply plugin: 'build-version'
 
 group = 'nz.org.geonet'
-version = '1.0.0-SNAPSHOT'
+version = buildVersion.version
 
 sourceCompatibility = 1.7
 targetCompatibility = 1.7
@@ -20,6 +21,7 @@ repositories {
         }
         url 'https://geonet.artifactoryonline.com/geonet/all'
     }
+    mavenCentral()
     mavenLocal()
 }
 
@@ -29,6 +31,9 @@ buildscript {
             url 'https://geonet.artifactoryonline.com/geonet/public-releases'
         }
         mavenCentral()
+    }
+    dependencies {
+        classpath group: 'nz.org.geonet', name: 'gradle-build-version-plugin', version: '1.0.2'
     }
 }
 
